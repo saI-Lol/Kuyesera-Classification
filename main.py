@@ -1,5 +1,4 @@
-from helper import ddp_setup, train_epoch, validate_epoch, evaluate, install_package
-install_package("rasterio")
+from helper import ddp_setup, train_epoch, validate_epoch, evaluate
 from torchvision import models
 from torch import nn
 import torch

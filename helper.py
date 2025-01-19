@@ -62,12 +62,12 @@ def ddp_setup(rank: int, world_size: int):
    torch.cuda.set_device(rank)
    init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
-def install_package(package_name):
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
-        print(f"Successfully installed {package_name}")
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to install {package_name}: {e}")
+# def install_package(package_name):
+#     try:
+#         subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+#         print(f"Successfully installed {package_name}")
+#     except subprocess.CalledProcessError as e:
+#         print(f"Failed to install {package_name}: {e}")
 
 
 def train_epoch(epoch, model, optimizer, data_loader, architecture):
