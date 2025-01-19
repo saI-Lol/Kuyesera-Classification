@@ -73,7 +73,7 @@ def train_epoch(epoch, model, optimizer, data_loader, architecture):
             outputs, labels = get_outputs(model, batch, architecture)
             loss = criterion(outputs, labels)
         losses.update(loss.item(), labels.size(0))
-        iterator.set_description(f"Epoch: {epoch+1} Loss: {losses.avg:.4f}")
+        iterator.set_description(f"GPU: {rank} Epoch: {epoch+1} Loss: {losses.avg:.4f}")
 
         optimizer.zero_grad()
         scaler.scale(loss).backward()
@@ -103,7 +103,7 @@ def validate_epoch(rank, epoch, model, data_loader, architecture, min_loss):
     recall = recall_score(all_labels, all_preds, average="weighted")
     f1 = f1_score(all_labels, all_preds, average="weighted")
     
-    print(f"GPU: {rank} | Validation Loss: {losses.avg:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1 Score: {f1:.4f}\n")
+    print(f"GPU: {rank} | Validation Loss: {losses.avg:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1 Score: {f1:.4f}")
     if min_loss is None or losses.avg < min_loss:
         min_loss = losses.avg
         save_model(model, min_loss, epoch, architecture)
