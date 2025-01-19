@@ -1,3 +1,28 @@
+from torchvision import models
+from torch import nn
+import torch
+import os
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset, DataLoader
+from pathlib import Path
+import json
+import argparse
+import numpy as np
+from shapely import wkt, box
+from PIL import Image
+from collections import Counter
+import torch.optim as optim
+from torch.amp import autocast, GradScaler
+from tqdm import tqdm
+from sklearn.metrics import precision_score, recall_score, f1_score
+from dataset import DatasetPost, DatasetPrePost
+import torch.multiprocessing as mp
+from torch.distributed import destroy_process_group
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data.distributed import DistributedSampler
+from models import DamageClassifierPO, DamageClassifierCC, DamageClassifierTTC, DamageClassifierTTS
+from helper import ddp_setup, train_epoch, validate_epoch, evaluate
+
 def main(rank, world_size, args):
     ddp_setup(rank, world_size)
     train_dataset_root_paths = args.train_dataset_root_paths
@@ -47,35 +72,7 @@ def main(rank, world_size, args):
     evaluate(rank, model, test_data_loader, architecture)
     destroy_process_group()
 
-if __name__ == "__main__":
-    import sys
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "rasterio"])   
-    from torchvision import models
-    from torch import nn
-    import torch
-    import os
-    import torchvision.transforms as transforms
-    from torch.utils.data import Dataset, DataLoader
-    from pathlib import Path
-    import json
-    import argparse
-    import numpy as np
-    from shapely import wkt, box
-    from PIL import Image
-    from collections import Counter
-    import torch.optim as optim
-    from torch.amp import autocast, GradScaler
-    from tqdm import tqdm
-    from sklearn.metrics import precision_score, recall_score, f1_score
-    from dataset import DatasetPost, DatasetPrePost
-    import torch.multiprocessing as mp
-    from torch.distributed import destroy_process_group
-    from torch.nn.parallel import DistributedDataParallel as DDP
-    from torch.utils.data.distributed import DistributedSampler
-    from models import DamageClassifierPO, DamageClassifierCC, DamageClassifierTTC, DamageClassifierTTS
-    from helper import ddp_setup, train_epoch, validate_epoch, evaluate
-
+if __name__ == "__main__":    
     parser = argparse.ArgumentParser(description="Train a model for damage classification")
     parser.add_argument("--train_dataset_root_paths", type=str, nargs='+', required=True)
     parser.add_argument("--val_dataset_root_paths", type=str, nargs='+', required=True)
