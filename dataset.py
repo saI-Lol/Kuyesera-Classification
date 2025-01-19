@@ -46,7 +46,7 @@ class DatasetPost(Dataset):
         self.damage_type_to_id = {class_:idx for idx, class_ in enumerate(classes)}
         self.transform = transform
         self.imgsz = imgsz
-        print(self.damage_type_to_id, Counter(damage_types))
+        # print(self.damage_type_to_id, Counter(damage_types))
 
     def __len__(self):
         return len(self.data)
@@ -102,7 +102,7 @@ class DatasetPrePost(Dataset):
         self.damage_type_to_id = {class_:idx for idx, class_ in enumerate(classes)}
         self.transform = transform
         self.imgsz = imgsz
-        print(self.damage_type_to_id, Counter(damage_types))
+        # print(self.damage_type_to_id, Counter(damage_types))
 
     def __len__(self):
         return len(self.data)
