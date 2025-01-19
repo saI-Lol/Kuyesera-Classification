@@ -60,7 +60,7 @@ def ddp_setup(rank: int, world_size: int):
    torch.cuda.set_device(rank)
    init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
-def train_epoch(epoch, model, optimizer, data_loader, architecture):
+def train_epoch(rank, epoch, model, optimizer, data_loader, architecture):
     losses = AverageMeter()
     criterion = nn.CrossEntropyLoss()
     scaler = GradScaler()

@@ -67,7 +67,7 @@ def main(rank, world_size, args):
 
     min_loss = None
     for epoch in range(epochs):
-        train_epoch(epoch, model, optimizer, train_data_loader, architecture)
+        train_epoch(rank, epoch, model, optimizer, train_data_loader, architecture)
         validate_epoch(rank, epoch, model, val_data_loader, architecture, min_loss)
     evaluate(rank, model, test_data_loader, architecture)
     destroy_process_group()
