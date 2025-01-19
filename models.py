@@ -41,7 +41,12 @@ class DamageClassifierCC(nn.Module):
         super(DamageClassifierCC, self).__init__()
 
         resnet18 = models.resnet18(weights="DEFAULT")
-        self.resnet18 = nn.Sequential(*list(resnet18.children())[:-2])
+        original_conv1 = resnet18.conv1
+        new_conv1 = nn.Conv2d(6, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+        new_conv1.weight.data[:, :3, :, :] = original_conv1.weight.data
+        nn.init.kaiming_normal_(new_conv1.weight.data[:, 3:, :, :], mode='fan_out', nonlinearity='relu')
+        children = list(resnet18.children())[1:-2]
+        self.resnet18 = nn.Sequential(new_conv1, *children)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.conv = ConvRelu(512, 1024)
         self.linear = nn.Linear(1024, 4)
