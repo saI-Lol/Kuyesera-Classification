@@ -9,7 +9,6 @@ import json
 import argparse
 import numpy as np
 from shapely import wkt, box
-import rasterio
 from PIL import Image
 from collections import Counter
 import torch.optim as optim
@@ -23,6 +22,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 from models import DamageClassifierPO, DamageClassifierCC, DamageClassifierTTC, DamageClassifierTTS
 from helper import ddp_setup, train_epoch, validate_epoch, evaluate, install_package
+install_package("rasterio")
+import rasterio
 
 def main(rank, world_size, args):
     ddp_setup(rank, world_size)
@@ -73,8 +74,7 @@ def main(rank, world_size, args):
     evaluate(rank, model, test_data_loader, architecture)
     destroy_process_group()
 
-if __name__ == "__main__":
-    install_package("rasterio")
+if __name__ == "__main__":    
     parser = argparse.ArgumentParser(description="Train a model for damage classification")
     parser.add_argument("--train_dataset_root_paths", type=str, nargs='+', required=True)
     parser.add_argument("--val_dataset_root_paths", type=str, nargs='+', required=True)
