@@ -16,6 +16,8 @@ from torch.amp import autocast, GradScaler
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score
 from torch.distributed import init_process_group
+import subprocess
+import sys
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -59,6 +61,14 @@ def ddp_setup(rank: int, world_size: int):
    os.environ["MASTER_PORT"] = "12355"
    torch.cuda.set_device(rank)
    init_process_group(backend="nccl", rank=rank, world_size=world_size)
+
+def install_package(package_name):
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+        print(f"Successfully installed {package_name}")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to install {package_name}: {e}")
+
 
 def train_epoch(epoch, model, optimizer, data_loader, architecture):
     losses = AverageMeter()

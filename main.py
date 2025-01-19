@@ -22,7 +22,7 @@ from torch.distributed import destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 from models import DamageClassifierPO, DamageClassifierCC, DamageClassifierTTC, DamageClassifierTTS
-from helper import ddp_setup, train_epoch, validate_epoch, evaluate
+from helper import ddp_setup, train_epoch, validate_epoch, evaluate, install_package
 
 def main(rank, world_size, args):
     ddp_setup(rank, world_size)
@@ -74,6 +74,7 @@ def main(rank, world_size, args):
     destroy_process_group()
 
 if __name__ == "__main__":
+    install_package("rasterio")
     parser = argparse.ArgumentParser(description="Train a model for damage classification")
     parser.add_argument("--train_dataset_root_paths", type=str, nargs='+', required=True)
     parser.add_argument("--val_dataset_root_paths", type=str, nargs='+', required=True)
