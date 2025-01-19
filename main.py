@@ -1,3 +1,5 @@
+from helper import ddp_setup, train_epoch, validate_epoch, evaluate, install_package
+install_package("rasterio")
 from torchvision import models
 from torch import nn
 import torch
@@ -21,9 +23,6 @@ from torch.distributed import destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 from models import DamageClassifierPO, DamageClassifierCC, DamageClassifierTTC, DamageClassifierTTS
-from helper import ddp_setup, train_epoch, validate_epoch, evaluate, install_package
-install_package("rasterio")
-import rasterio
 
 def main(rank, world_size, args):
     ddp_setup(rank, world_size)
