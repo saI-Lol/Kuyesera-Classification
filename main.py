@@ -72,16 +72,31 @@ def main(rank, world_size, args):
     evaluate(rank, model, test_data_loader, architecture)
     destroy_process_group()
 
+
+def experiment(args):
+    checkpoint_path = args.checkpoint_path
+    architecture = args.architecture
+    checkpoint = torch.load(checkpoint_path)
+    del checkpoint['model_state_dict']
+    print(f"architecture: {architecture}")
+    for k,v in checkpoint.items():
+        print(f"{k}: {v}")
+
 if __name__ == "__main__":    
-    parser = argparse.ArgumentParser(description="Train a model for damage classification")
-    parser.add_argument("--train_dataset_root_paths", type=str, nargs='+', required=True)
-    parser.add_argument("--val_dataset_root_paths", type=str, nargs='+', required=True)
-    parser.add_argument("--test_dataset_root_paths", type=str, nargs='+', required=True)
+    # parser = argparse.ArgumentParser(description="Train a model for damage classification")
+    # parser.add_argument("--train_dataset_root_paths", type=str, nargs='+', required=True)
+    # parser.add_argument("--val_dataset_root_paths", type=str, nargs='+', required=True)
+    # parser.add_argument("--test_dataset_root_paths", type=str, nargs='+', required=True)
+    # parser.add_argument("--architecture", type=str, required=True)
+    # parser.add_argument("--batch_size", type=int, default=128)
+    # parser.add_argument("--imgsz", type=int, default=128)
+    # parser.add_argument("--workers", type=int, default=4)
+    # parser.add_argument("--epochs", type=int, default=10)
+    # args = parser.parse_args()
+    # world_size = torch.cuda.device_count()
+    # mp.spawn(main, args=(world_size, args), nprocs=world_size)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--checkpoint_path", type=str, required=True)
     parser.add_argument("--architecture", type=str, required=True)
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--imgsz", type=int, default=128)
-    parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--epochs", type=int, default=10)
     args = parser.parse_args()
-    world_size = torch.cuda.device_count()
-    mp.spawn(main, args=(world_size, args), nprocs=world_size)
+    experiment(args)
