@@ -14,7 +14,7 @@ from collections import Counter
 import torch.optim as optim
 from torch.amp import autocast, GradScaler
 from tqdm import tqdm
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score, classification_report
 from torch.distributed import init_process_group
 
 class AverageMeter(object):
@@ -130,5 +130,7 @@ def evaluate(rank, model, data_loader, architecture):
     precision = precision_score(all_labels, all_preds, average="weighted")
     recall = recall_score(all_labels, all_preds, average="weighted")
     f1 = f1_score(all_labels, all_preds, average="weighted")
+    report = classification_report(all_labels, all_preds)
     
     print(f"GPU: {rank} | Test Loss: {losses.avg:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1 Score: {f1:.4f}")
+    print(report)
