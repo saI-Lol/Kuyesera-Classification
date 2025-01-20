@@ -78,9 +78,8 @@ def experiment(args):
     architecture = args.architecture
     checkpoint = torch.load(checkpoint_path, weights_only=True, map_location="cpu")
     del checkpoint['model_state_dict']
-    print(f"architecture: {architecture}")
-    for k,v in checkpoint.items():
-        print(f"{k}: {v}")
+    items = [f"architecture: {architecture}"] + [f'{k}: {v}' for k,v in checkpoint.items()]
+    print(' '.join(items))
 
 if __name__ == "__main__":    
     # parser = argparse.ArgumentParser(description="Train a model for damage classification")
