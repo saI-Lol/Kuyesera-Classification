@@ -76,7 +76,7 @@ def main(rank, world_size, args):
 def experiment(args):
     checkpoint_path = args.checkpoint_path
     architecture = args.architecture
-    checkpoint = torch.load(checkpoint_path, weights_only=True)
+    checkpoint = torch.load(checkpoint_path, weights_only=True, map_location="cpu")
     del checkpoint['model_state_dict']
     print(f"architecture: {architecture}")
     for k,v in checkpoint.items():
