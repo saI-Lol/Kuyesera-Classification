@@ -74,12 +74,39 @@ def main(rank, world_size, args):
 
 
 def experiment(args):
+    classes = ['no_damage', 'minor_damage', 'major_damage', 'destroyed']
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
     checkpoint_path = args.checkpoint_path
     architecture = args.architecture
+    test_dataset_root_paths = args.test_dataset_root_paths
+    batch_size = args.batch_size
+    workers= args.workers
+    imgsz = args.imgsz
+
     checkpoint = torch.load(checkpoint_path, weights_only=True, map_location="cpu")
-    del checkpoint['model_state_dict']
     items = [f"architecture: {architecture}"] + [f'{k}: {v}' for k,v in checkpoint.items()]
     print(' '.join(items))
+
+    if architecture == "PO":
+        test_dataset = DatasetPost(test_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
+    else:
+        test_dataset = DatasetPrePost(test_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
+    test_data_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
+
+    if architecture == "PO":
+        model = DamageClassifierPO().cuda()
+    elif architecture == "CC":
+        model = DamageClassifierCC().cuda()
+    elif architecture == "TTC":
+        model = DamageClassifierTTC().cuda()
+    elif architecture == "TTS":
+        model = DamageClassifierTTS().cuda()
+    model.load_state_dict(checkpoint['model_state_dict'], weights_only=True)
+    evaluate(0, model, test_data_loader, architecture)
 
 if __name__ == "__main__":    
     # parser = argparse.ArgumentParser(description="Train a model for damage classification")
@@ -97,5 +124,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint_path", type=str, required=True)
     parser.add_argument("--architecture", type=str, required=True)
+    parser.add_argument("--test_dataset_root_paths", type=str, nargs='+', required=True)
+    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--imgsz", type=int, default=128)
+    parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
     experiment(args)
