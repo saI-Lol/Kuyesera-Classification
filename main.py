@@ -105,7 +105,14 @@ def experiment(args):
         model = DamageClassifierTTC().cuda()
     elif architecture == "TTS":
         model = DamageClassifierTTS().cuda()
-    model.load_state_dict(checkpoint['model_state_dict'])
+
+    loaded_dict = checkpoint['model_state_dict']
+    sd = model.state_dict()
+    for k in model.state_dict():
+        if k in loaded_dict and sd[k].size() == loaded_dict[k].size():
+            sd[k] = loaded_dict[k]
+    loaded_dict = sd
+    model.load_state_dict(loaded_dict)
     evaluate(0, model, test_data_loader, architecture)
 
 if __name__ == "__main__":    
