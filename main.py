@@ -73,7 +73,8 @@ def main(rank, world_size, args):
     destroy_process_group()
 
 
-def experiment(args):
+def experiment(rank, world_size, args):
+    ddp_setup(rank, world_size)
     classes = ['no_damage', 'minor_damage', 'major_damage', 'destroyed']
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -95,7 +96,7 @@ def experiment(args):
         test_dataset = DatasetPost(test_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
     else:
         test_dataset = DatasetPrePost(test_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
-    test_data_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
+    test_data_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=workers, sampler=DistributedSampler(test_dataset))
 
     if architecture == "PO":
         model = DamageClassifierPO().cuda()
@@ -105,6 +106,8 @@ def experiment(args):
         model = DamageClassifierTTC().cuda()
     elif architecture == "TTS":
         model = DamageClassifierTTS().cuda()
+    model = model.to(rank)
+    model = DDP(model, device_ids=[rank]) 
 
     loaded_dict = checkpoint['model_state_dict']
     sd = model.state_dict()
@@ -113,7 +116,8 @@ def experiment(args):
             sd[k] = loaded_dict[k]
     loaded_dict = sd
     model.load_state_dict(loaded_dict)
-    evaluate(0, model, test_data_loader, architecture)
+    evaluate(rank, model, test_data_loader, architecture)
+    destroy_process_group()
 
 if __name__ == "__main__":    
     # parser = argparse.ArgumentParser(description="Train a model for damage classification")
@@ -136,4 +140,6 @@ if __name__ == "__main__":
     parser.add_argument("--imgsz", type=int, default=128)
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
-    experiment(args)
+    # experiment(args)
+    world_size = torch.cuda.device_count()
+    mp.spawn(experiment, args=(world_size, args), nprocs=world_size)
