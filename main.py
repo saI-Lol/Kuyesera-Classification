@@ -88,7 +88,7 @@ def experiment(args):
     imgsz = args.imgsz
 
     checkpoint = torch.load(checkpoint_path, weights_only=True, map_location="cpu")
-    items = [f"architecture: {architecture}"] + [f'{k}: {v}' for k,v in checkpoint.items()]
+    items = [f"architecture: {architecture}"] + [f'{k}: {v}' for k,v in checkpoint.items() if k != "model_state_dict"]
     print(' '.join(items))
 
     if architecture == "PO":
