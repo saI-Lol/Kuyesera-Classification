@@ -142,7 +142,7 @@ def read_raster(file_path):
         img_arr = f.read()
     return img_arr
 
-def predict(model, loc_dir, original_file_dir, architecture):
+def predict(model, loc_dir, original_file_dir, architecture, transform, imgsz):
     thresholds = [25, 50, 75, 100]
     classes = ['no_damage', 'minor_damage', 'major_damage', 'destroyed']
     loc_dir = Path(loc_dir)
@@ -180,8 +180,16 @@ def predict(model, loc_dir, original_file_dir, architecture):
                 xmin, ymin, xmax, ymax = list(map(int, polygon.bounds))
                 pre_img_patch = pre_image[:, ymin:ymax, xmin:xmax]
                 post_img_patch = post_image[:, ymin:ymax, xmin:xmax]
-                pre_img_tensor = torch.from_numpy(pre_img_patch).unsqueeze(0).float().cuda()
-                post_img_tensor = torch.from_numpy(post_img_patch).unsqueeze(0).float().cuda()
+                pre_img_patch = np.transpose(pre_img_patch, (1, 2, 0)).astype(np.uint8)
+                post_img_patch = np.transpose(post_img_patch, (1, 2, 0)).astype(np.uint8)
+                pre_img_patch = Image.fromarray(pre_img_patch)
+                post_img_patch = Image.fromarray(post_img_patch)
+                pre_img_patch = pre_img_patch.resize((imgsz, imgsz), resample=Image.Resampling.LANCZOS)
+                post_img_patch = post_img_patch.resize((imgsz, imgsz), resample=Image.Resampling.LANCZOS)
+                pre_img_patch = transform(pre_img_patch)
+                post_img_patch = transform(post_img_patch)
+                pre_img_tensor = pre_img_patch.unsqueeze(0).cuda()
+                post_img_tensor = post_img_patch.unsqueeze(0).cuda()
 
                 if architecture == "PO":
                     output = model(pre_img_tensor)

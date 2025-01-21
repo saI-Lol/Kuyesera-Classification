@@ -111,7 +111,7 @@ def experiment(rank, world_size, args):
             sd[k] = loaded_dict[k]
     loaded_dict = sd
     model.load_state_dict(loaded_dict)
-    predict(model, loc_dir, original_file_dir, architecture)
+    predict(model, loc_dir, original_file_dir, architecture, transform, imgsz)
     destroy_process_group()
 
 if __name__ == "__main__":    
