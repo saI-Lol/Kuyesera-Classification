@@ -177,7 +177,7 @@ def predict(model, loc_dir, original_file_dir, architecture):
             post_image = read_raster(original_file_path_post)
 
             for polygon in polygons:
-                xmin, ymin, xmax, ymax = polygon.bounds
+                xmin, ymin, xmax, ymax = list(map(int, polygon.bounds))
                 pre_img_patch = pre_image[:, ymin:ymax, xmin:xmax]
                 post_img_patch = post_image[:, ymin:ymax, xmin:xmax]
                 pre_img_tensor = torch.from_numpy(pre_img_patch).unsqueeze(0).float().cuda()
