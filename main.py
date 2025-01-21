@@ -21,7 +21,7 @@ from torch.distributed import destroy_process_group
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 from models import DamageClassifierPO, DamageClassifierCC, DamageClassifierTTC, DamageClassifierTTS
-from helper import ddp_setup, train_epoch, validate_epoch, evaluate
+from helper import ddp_setup, train_epoch, validate_epoch, evaluate, predict
 
 def main(rank, world_size, args):
     ddp_setup(rank, world_size)
@@ -83,7 +83,8 @@ def experiment(rank, world_size, args):
 
     checkpoint_path = args.checkpoint_path
     architecture = args.architecture
-    test_dataset_root_paths = args.test_dataset_root_paths
+    loc_dir = args.loc_dir
+    original_file_dir = args.original_file_dir
     batch_size = args.batch_size
     workers= args.workers
     imgsz = args.imgsz
@@ -91,12 +92,6 @@ def experiment(rank, world_size, args):
     checkpoint = torch.load(checkpoint_path, weights_only=True, map_location="cpu")
     items = [f"architecture: {architecture}"] + [f'{k}: {v}' for k,v in checkpoint.items() if k != "model_state_dict"]
     print(' '.join(items))
-
-    if architecture == "PO":
-        test_dataset = DatasetPost(test_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
-    else:
-        test_dataset = DatasetPrePost(test_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
-    test_data_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=workers, sampler=DistributedSampler(test_dataset))
 
     if architecture == "PO":
         model = DamageClassifierPO().cuda()
@@ -116,7 +111,7 @@ def experiment(rank, world_size, args):
             sd[k] = loaded_dict[k]
     loaded_dict = sd
     model.load_state_dict(loaded_dict)
-    evaluate(rank, model, test_data_loader, architecture)
+    predict(model, loc_dir, original_file_dir, architecture)
     destroy_process_group()
 
 if __name__ == "__main__":    
@@ -135,7 +130,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint_path", type=str, required=True)
     parser.add_argument("--architecture", type=str, required=True)
-    parser.add_argument("--test_dataset_root_paths", type=str, nargs='+', required=True)
+    parser.add_argument("--loc_dir", type=str, required=True)
+    parser.add_argument("--original_file_dir", type=str, required=True)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--imgsz", type=int, default=128)
     parser.add_argument("--workers", type=int, default=4)

@@ -9,6 +9,7 @@ import json
 import numpy as np
 from shapely import wkt, box
 import rasterio
+import rasterio.features
 from PIL import Image
 from collections import Counter
 import torch.optim as optim
@@ -134,3 +135,69 @@ def evaluate(rank, model, data_loader, architecture):
     
     print(f"GPU: {rank} | Test Loss: {losses.avg:.4f} | Precision: {precision:.4f} | Recall: {recall:.4f} | F1 Score: {f1:.4f}")
     print(report)
+
+def read_raster(file_path):
+    with rasterio.open(file_path) as f:
+        img_arr = f.read()
+    return img_arr
+
+def predict(model, loc_dir, original_file_dir, architecture):
+    thresholds = [25, 50, 75, 100]
+    classes = ['no_damage', 'minor_damage', 'major_damage', 'destroyed']
+    loc_dir = Path(loc_dir)
+    original_file_dir = Path(original_file_dir)
+    loc_files = sorted([filename for filename in os.listdir(loc_dir) if "part1" in filename])
+    
+    for threshold in thresholds:
+        results = []
+        for filename in tqdm(loc_files, desc=f"Threshold {threshold}"):
+            polygons = []
+            damage_dict = {
+                'no_damage': 0,
+                'minor_damage': 0,
+                'major_damage': 0,
+                'destroyed': 0
+            }
+            image_id = '_'.join(filename.split('_')[:-3])
+            original_file_path_pre = original_file_dir / filename.replace("_part1.png", ".tif")
+            original_file_path_post = original_file_dir / filename.replace("_part1.png", ".tif").replace("pre", "post")
+            loc_file_path = loc_dir / filename
+            img = Image.open(loc_file_path)
+            img = np.array(img.convert("L"))
+            binary_mask = (img >= threshold).astype('uint8')
+            shapes = rasterio.features.shapes(binary_mask)
+            for shape in shapes:
+                if shape[1] == 1:
+                    image_box = box(0, 0, 1024, 1024)
+                    polygon = shapely.geometry.Polygon(shape[0]["coordinates"][0])
+                    if not polygon.intersection(image_box).is_empty:
+                        polygons.append(polygon)
+            pre_image = read_raster(original_file_path_pre)
+            post_image = read_raster(original_file_path_post)
+
+            for polygon in polygons:
+                xmin, ymin, xmax, ymax = polygon.bounds
+                pre_img_patch = pre_image[:, ymin:ymax, xmin:xmax]
+                post_img_patch = post_image[:, ymin:ymax, xmin:xmax]
+                pre_img_tensor = torch.from_numpy(pre_img_patch).unsqueeze(0).float().cuda()
+                post_img_tensor = torch.from_numpy(post_img_patch).unsqueeze(0).float().cuda()
+
+                if architecture == "PO":
+                    output = model(pre_img_tensor)
+                else:
+                    output = model(pre_img_tensor, post_img_tensor)
+                pred = torch.argmax(torch.softmax(output, 1), dim=1).item()
+                damage_type = classes[pred]
+                damage_dict[damage_type] += 1
+            for damage_type, count in damage_dict.items():
+                results.append({
+                    'id': f"{image_id}_X_{damage_type}",
+                    'target': count
+                })
+        df_sub = pd.DataFrame(results)
+        df_sub.to_csv(f"submission_threshold{threshold}.csv", index=False)
+
+
+
+            
+    
