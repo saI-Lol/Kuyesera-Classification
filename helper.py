@@ -9,6 +9,7 @@ import json
 import numpy as np
 from shapely import wkt, box
 import rasterio
+import shapely.geometry
 import rasterio.features
 from PIL import Image
 from collections import Counter
