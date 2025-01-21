@@ -195,7 +195,7 @@ def predict(model, loc_dir, original_file_dir, architecture):
                     'target': count
                 })
         df_sub = pd.DataFrame(results)
-        df_sub.to_csv(f"submission_threshold{threshold}.csv", index=False)
+        df_sub.to_csv(f"submission_threshold_{threshold}_architecture_{architecture}.csv", index=False)
 
 
 
