@@ -43,12 +43,18 @@ class DatasetPost(Dataset):
                             'damage_type':subtype,
                             'bbox':list(map(int, [xmin, ymin, xmax, ymax]))
                         })
-                        damage_types_counts[subtype] += 1
+                        damage_types_counts[subtype] += 1        
+
+        mean_damaged = np.mean([damage_types_counts[class_] for class_ in classes if class_ != 'no_damage'])
+        no_damage_data = [item for item in data if item['damage_type'] == 'no_damage']
+        np.random.shuffle(no_damage_data)
+        data = [item for item in data if item['damage_type'] != 'no_damage']
+        data += no_damage_data[:mean_damaged] 
         self.data = data
         self.damage_type_to_id = {class_:idx for idx, class_ in enumerate(classes)}
         self.transform = transform
         self.imgsz = imgsz
-        print(self.damage_type_to_id, damage_types_counts)
+        print(self.damage_type_to_id, Counter(data))
 
     def __len__(self):
         return len(self.data)
