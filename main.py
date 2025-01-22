@@ -53,24 +53,24 @@ def main(rank, world_size, args):
     val_data_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers, sampler=DistributedSampler(val_dataset))
     test_data_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=workers, sampler=DistributedSampler(test_dataset))
 
-    # if architecture == "PO":
-    #     model = DamageClassifierPO().cuda()
-    # elif architecture == "CC":
-    #     model = DamageClassifierCC().cuda()
-    # elif architecture == "TTC":
-    #     model = DamageClassifierTTC().cuda()
-    # elif architecture == "TTS":
-    #     model = DamageClassifierTTS().cuda()
-    # model = model.to(rank)
-    # model = DDP(model, device_ids=[rank])
-    # params = model.parameters()
-    # optimizer = optim.SGD(params, lr=0.001, momentum=0.9)
+    if architecture == "PO":
+        model = DamageClassifierPO().cuda()
+    elif architecture == "CC":
+        model = DamageClassifierCC().cuda()
+    elif architecture == "TTC":
+        model = DamageClassifierTTC().cuda()
+    elif architecture == "TTS":
+        model = DamageClassifierTTS().cuda()
+    model = model.to(rank)
+    model = DDP(model, device_ids=[rank])
+    params = model.parameters()
+    optimizer = optim.SGD(params, lr=0.001, momentum=0.9)
 
-    # min_loss = None
-    # for epoch in range(epochs):
-    #     train_epoch(rank, epoch, model, optimizer, train_data_loader, architecture)
-    #     validate_epoch(rank, epoch, model, val_data_loader, architecture, min_loss)
-    # evaluate(rank, model, test_data_loader, architecture)
+    min_loss = None
+    for epoch in range(epochs):
+        train_epoch(rank, epoch, model, optimizer, train_data_loader, architecture)
+        validate_epoch(rank, epoch, model, val_data_loader, architecture, min_loss)
+    evaluate(rank, model, test_data_loader, architecture)
     destroy_process_group()
 
 
