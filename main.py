@@ -134,8 +134,6 @@ def create_submission(rank, world_size, args):
 
     main_checkpoint = torch.load(main_model_checkpoint_path, weights_only=True, map_location="cpu")
     sub_checkpoint = torch.load(sub_model_checkpoint_path, weights_only=True, map_location="cpu")
-    items = [f"architecture: {architecture}"] + [f'{k}: {v}' for k,v in checkpoint.items() if k != "model_state_dict"]
-    print(' '.join(items))
 
     if architecture == "PO":
         model_main = DamageClassifierPO().cuda()
