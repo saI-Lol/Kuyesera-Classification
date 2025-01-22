@@ -45,7 +45,7 @@ class DatasetPost(Dataset):
                         })
                         damage_types_counts[subtype] += 1        
 
-        mean_damaged = np.mean([damage_types_counts[class_] for class_ in classes if class_ != 'no_damage'])
+        mean_damaged = int(np.mean([damage_types_counts[class_] for class_ in classes if class_ != 'no_damage']))
         no_damage_data = [item for item in data if item['damage_type'] == 'no_damage']
         np.random.shuffle(no_damage_data)
         data = [item for item in data if item['damage_type'] != 'no_damage']
