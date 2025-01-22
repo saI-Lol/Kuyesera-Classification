@@ -18,8 +18,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 
 class DatasetPost(Dataset):
     def __init__(self, dataset_root_paths, classes, combine_minor_major, transform=None, imgsz=128):
-        if combine_minor_major:
-            classes = [class_ for class_ in classes if class_ != "minor_damage" and class_ != "major_damage"]
+        classes = classes if not combine_minor_major else [class_ for class_ in classes if class_ != "minor_damage" and class_ != "major_damage"] + ["minor_major_damage"]
         print(classes, combine_minor_major)
         data = []
         damage_types_counts = {class_:0 for class_ in classes}
