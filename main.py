@@ -126,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--classes", type=str, nargs='+', default=['no_damage', 'minor_damage', 'major_damage', 'destroyed'])
-    parser.add_argument("--combine_minor_major", type=bool, default=False)
+    parser.add_argument("--combine_minor_major", action="store_true", help="Combine minor and major categories (default: False)")
     args = parser.parse_args()
     world_size = torch.cuda.device_count()
     mp.spawn(main, args=(world_size, args), nprocs=world_size)
