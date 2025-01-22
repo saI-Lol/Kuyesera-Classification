@@ -147,7 +147,7 @@ def predict(model_main, model_sub, loc_df, original_file_dir, architecture, tran
     classes_main = ['no_damage', 'destroyed', 'minor_major_damage']
     classes_sub = ['minor_damage', 'major_damage']
     original_file_dir = Path(original_file_dir)
-    thresholds = [0.01, 0.05, 0.1, 0.25, 0.5]
+    thresholds = [0.65, 0.75, 0.85]
     
     for threshold in thresholds:
         results = []
