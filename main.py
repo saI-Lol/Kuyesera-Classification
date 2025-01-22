@@ -33,109 +33,112 @@ def main(rank, world_size, args):
     imgsz = args.imgsz
     workers = args.workers
     epochs = args.epochs
+    combine_minor_major = args.combine_minor_major
 
-    classes = ['no_damage', 'minor_damage', 'major_damage', 'destroyed']
+    classes = args.classes
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     
     if architecture == "PO":
-        train_dataset = DatasetPost(train_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
-        val_dataset = DatasetPost(val_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
-        test_dataset = DatasetPost(test_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
+        train_dataset = DatasetPost(train_dataset_root_paths, classes, combine_minor_major, transform=transform, imgsz=imgsz)
+        val_dataset = DatasetPost(val_dataset_root_paths, classes, combine_minor_major, transform=transform, imgsz=imgsz)
+        test_dataset = DatasetPost(test_dataset_root_paths, classes, combine_minor_major, transform=transform, imgsz=imgsz)
     else:
-        train_dataset = DatasetPrePost(train_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
-        val_dataset = DatasetPrePost(val_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
-        test_dataset = DatasetPrePost(test_dataset_root_paths, classes, transform=transform, imgsz=imgsz)
+        train_dataset = DatasetPrePost(train_dataset_root_paths, classes, combine_minor_major, transform=transform, imgsz=imgsz)
+        val_dataset = DatasetPrePost(val_dataset_root_paths, classes, combine_minor_major, transform=transform, imgsz=imgsz)
+        test_dataset = DatasetPrePost(test_dataset_root_paths, classes, combine_minor_major, transform=transform, imgsz=imgsz)
     train_data_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=workers, drop_last=True, sampler=DistributedSampler(train_dataset))
     val_data_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=workers, sampler=DistributedSampler(val_dataset))
     test_data_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=workers, sampler=DistributedSampler(test_dataset))
 
-    if architecture == "PO":
-        model = DamageClassifierPO().cuda()
-    elif architecture == "CC":
-        model = DamageClassifierCC().cuda()
-    elif architecture == "TTC":
-        model = DamageClassifierTTC().cuda()
-    elif architecture == "TTS":
-        model = DamageClassifierTTS().cuda()
-    model = model.to(rank)
-    model = DDP(model, device_ids=[rank])
-    params = model.parameters()
-    optimizer = optim.SGD(params, lr=0.001, momentum=0.9)
+    # if architecture == "PO":
+    #     model = DamageClassifierPO().cuda()
+    # elif architecture == "CC":
+    #     model = DamageClassifierCC().cuda()
+    # elif architecture == "TTC":
+    #     model = DamageClassifierTTC().cuda()
+    # elif architecture == "TTS":
+    #     model = DamageClassifierTTS().cuda()
+    # model = model.to(rank)
+    # model = DDP(model, device_ids=[rank])
+    # params = model.parameters()
+    # optimizer = optim.SGD(params, lr=0.001, momentum=0.9)
 
-    min_loss = None
-    for epoch in range(epochs):
-        train_epoch(rank, epoch, model, optimizer, train_data_loader, architecture)
-        validate_epoch(rank, epoch, model, val_data_loader, architecture, min_loss)
-    evaluate(rank, model, test_data_loader, architecture)
+    # min_loss = None
+    # for epoch in range(epochs):
+    #     train_epoch(rank, epoch, model, optimizer, train_data_loader, architecture)
+    #     validate_epoch(rank, epoch, model, val_data_loader, architecture, min_loss)
+    # evaluate(rank, model, test_data_loader, architecture)
     destroy_process_group()
 
 
-def experiment(rank, world_size, args):
-    ddp_setup(rank, world_size)
-    classes = ['no_damage', 'minor_damage', 'major_damage', 'destroyed']
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+# def experiment(rank, world_size, args):
+#     ddp_setup(rank, world_size)
+#     classes = args.classes
+#     transform = transforms.Compose([
+#         transforms.ToTensor(),
+#         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+#     ])
 
-    checkpoint_path = args.checkpoint_path
-    architecture = args.architecture
-    loc_dir = args.loc_dir
-    original_file_dir = args.original_file_dir
-    batch_size = args.batch_size
-    workers= args.workers
-    imgsz = args.imgsz
+#     checkpoint_path = args.checkpoint_path
+#     architecture = args.architecture
+#     loc_dir = args.loc_dir
+#     original_file_dir = args.original_file_dir
+#     batch_size = args.batch_size
+#     workers= args.workers
+#     imgsz = args.imgsz
 
-    checkpoint = torch.load(checkpoint_path, weights_only=True, map_location="cpu")
-    items = [f"architecture: {architecture}"] + [f'{k}: {v}' for k,v in checkpoint.items() if k != "model_state_dict"]
-    print(' '.join(items))
+#     checkpoint = torch.load(checkpoint_path, weights_only=True, map_location="cpu")
+#     items = [f"architecture: {architecture}"] + [f'{k}: {v}' for k,v in checkpoint.items() if k != "model_state_dict"]
+#     print(' '.join(items))
 
-    if architecture == "PO":
-        model = DamageClassifierPO().cuda()
-    elif architecture == "CC":
-        model = DamageClassifierCC().cuda()
-    elif architecture == "TTC":
-        model = DamageClassifierTTC().cuda()
-    elif architecture == "TTS":
-        model = DamageClassifierTTS().cuda()
-    model = model.to(rank)
-    model = DDP(model, device_ids=[rank]) 
+#     if architecture == "PO":
+#         model = DamageClassifierPO().cuda()
+#     elif architecture == "CC":
+#         model = DamageClassifierCC().cuda()
+#     elif architecture == "TTC":
+#         model = DamageClassifierTTC().cuda()
+#     elif architecture == "TTS":
+#         model = DamageClassifierTTS().cuda()
+#     model = model.to(rank)
+#     model = DDP(model, device_ids=[rank]) 
 
-    loaded_dict = checkpoint['model_state_dict']
-    sd = model.state_dict()
-    for k in model.state_dict():
-        if k in loaded_dict and sd[k].size() == loaded_dict[k].size():
-            sd[k] = loaded_dict[k]
-    loaded_dict = sd
-    model.load_state_dict(loaded_dict)
-    predict(model, loc_dir, original_file_dir, architecture, transform, imgsz)
-    destroy_process_group()
+#     loaded_dict = checkpoint['model_state_dict']
+#     sd = model.state_dict()
+#     for k in model.state_dict():
+#         if k in loaded_dict and sd[k].size() == loaded_dict[k].size():
+#             sd[k] = loaded_dict[k]
+#     loaded_dict = sd
+#     model.load_state_dict(loaded_dict)
+#     predict(model, loc_dir, original_file_dir, architecture, transform, imgsz)
+#     destroy_process_group()
 
 if __name__ == "__main__":    
-    # parser = argparse.ArgumentParser(description="Train a model for damage classification")
-    # parser.add_argument("--train_dataset_root_paths", type=str, nargs='+', required=True)
-    # parser.add_argument("--val_dataset_root_paths", type=str, nargs='+', required=True)
-    # parser.add_argument("--test_dataset_root_paths", type=str, nargs='+', required=True)
-    # parser.add_argument("--architecture", type=str, required=True)
-    # parser.add_argument("--batch_size", type=int, default=128)
-    # parser.add_argument("--imgsz", type=int, default=128)
-    # parser.add_argument("--workers", type=int, default=4)
-    # parser.add_argument("--epochs", type=int, default=10)
-    # args = parser.parse_args()
-    # world_size = torch.cuda.device_count()
-    # mp.spawn(main, args=(world_size, args), nprocs=world_size)
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint_path", type=str, required=True)
+    parser = argparse.ArgumentParser(description="Train a model for damage classification")
+    parser.add_argument("--train_dataset_root_paths", type=str, nargs='+', required=True)
+    parser.add_argument("--val_dataset_root_paths", type=str, nargs='+', required=True)
+    parser.add_argument("--test_dataset_root_paths", type=str, nargs='+', required=True)
     parser.add_argument("--architecture", type=str, required=True)
-    parser.add_argument("--loc_dir", type=str, required=True)
-    parser.add_argument("--original_file_dir", type=str, required=True)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--imgsz", type=int, default=128)
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--classes", type=str, nargs='+', default=['no_damage', 'minor_damage', 'major_damage', 'destroyed'])
+    parser.add_argument("--combine_minor_major", type=bool, default=False)
     args = parser.parse_args()
-    # experiment(args)
     world_size = torch.cuda.device_count()
-    mp.spawn(experiment, args=(world_size, args), nprocs=world_size)
+    mp.spawn(main, args=(world_size, args), nprocs=world_size)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("--checkpoint_path", type=str, required=True)
+    # parser.add_argument("--architecture", type=str, required=True)
+    # parser.add_argument("--loc_dir", type=str, required=True)
+    # parser.add_argument("--original_file_dir", type=str, required=True)
+    # parser.add_argument("--batch_size", type=int, default=128)
+    # parser.add_argument("--imgsz", type=int, default=128)
+    # parser.add_argument("--workers", type=int, default=4)
+    # args = parser.parse_args()
+    # # experiment(args)
+    # world_size = torch.cuda.device_count()
+    # mp.spawn(experiment, args=(world_size, args), nprocs=world_size)

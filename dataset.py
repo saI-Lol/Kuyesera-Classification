@@ -17,9 +17,10 @@ from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 class DatasetPost(Dataset):
-    def __init__(self, dataset_root_paths, classes, transform=None, imgsz=128):
+    def __init__(self, dataset_root_paths, classes, combine_minor_major, transform=None, imgsz=128):
+        classes = classes if not combine_minor_major else [class_ for class_ in classes if class_ != "minor_damage" and class_ != "major_damage"] + ["minor_major_damage"]
         data = []
-        damage_types = []
+        damage_types_counts = {class_:0 for class_ in classes}
         for dataset_root in dataset_root_paths:
             dataset_root = Path(dataset_root)
             image_ids = list(set(['_'.join(filename.split('_')[:-2]) for filename in os.listdir(dataset_root / "images")]))
@@ -32,7 +33,7 @@ class DatasetPost(Dataset):
                     subtype = feature['properties']['subtype'].replace("-", "_")
                     if subtype == "un_classified":
                         continue
-                    damage_types.append(subtype)
+                    subtype = "minor_major_damage" if combine_minor_major and (subtype == "minor_damage" or subtype == "major_damage") else subtype
                     polygon = wkt.loads(feature['wkt'])
                     polygon = self.clip_polygon_to_image(polygon)
                     if polygon:
@@ -42,11 +43,12 @@ class DatasetPost(Dataset):
                             'damage_type':subtype,
                             'bbox':list(map(int, [xmin, ymin, xmax, ymax]))
                         })
+                        damage_types_counts[subtype] += 1
         self.data = data
         self.damage_type_to_id = {class_:idx for idx, class_ in enumerate(classes)}
         self.transform = transform
         self.imgsz = imgsz
-        # print(self.damage_type_to_id, Counter(damage_types))
+        print(self.damage_type_to_id, damage_types_counts)
 
     def __len__(self):
         return len(self.data)
@@ -72,9 +74,10 @@ class DatasetPost(Dataset):
 
 
 class DatasetPrePost(Dataset):
-    def __init__(self, dataset_root_paths, classes, transform=None, imgsz=128):
+    def __init__(self, dataset_root_paths, classes, combine_minor_major, transform=None, imgsz=128):
+        classes = classes if not combine_minor_major else [class_ for class_ in classes if class_ != "minor_damage" and class_ != "major_damage"] + ["minor_major_damage"]
         data = []
-        damage_types = []
+        damage_types_counts = {class_:0 for class_ in classes}
         for dataset_root in dataset_root_paths:
             dataset_root = Path(dataset_root)
             image_ids = list(set(['_'.join(filename.split('_')[:-2]) for filename in os.listdir(dataset_root / "images")]))
@@ -87,10 +90,10 @@ class DatasetPrePost(Dataset):
                     subtype = feature['properties']['subtype'].replace("-", "_")
                     if subtype == "un_classified":
                         continue
-                    damage_types.append(subtype)
+                    subtype = "minor_major_damage" if combine_minor_major and (subtype == "minor_damage" or subtype == "major_damage") else subtype
                     polygon = wkt.loads(feature['wkt'])
                     polygon = self.clip_polygon_to_image(polygon)
-                    if polygon:
+                    if polygon and subtype in classes:
                         xmin, ymin, xmax, ymax = polygon.bounds
                         data.append({
                             'pre_image_path':dataset_root / "images" / f"{image_id}_pre_disaster.tif",
@@ -98,11 +101,12 @@ class DatasetPrePost(Dataset):
                             'damage_type':subtype,
                             'bbox':list(map(int, [xmin, ymin, xmax, ymax]))
                         })
+                        damage_types_counts[subtype] += 1
         self.data = data
         self.damage_type_to_id = {class_:idx for idx, class_ in enumerate(classes)}
         self.transform = transform
         self.imgsz = imgsz
-        # print(self.damage_type_to_id, Counter(damage_types))
+        print(self.damage_type_to_id, damage_types_counts)
 
     def __len__(self):
         return len(self.data)
