@@ -37,7 +37,7 @@ class DatasetPost(Dataset):
                     subtype = "minor_major_damage" if combine_minor_major and (subtype == "minor_damage" or subtype == "major_damage") else subtype
                     polygon = wkt.loads(feature['wkt'])
                     polygon = self.clip_polygon_to_image(polygon)
-                    if polygon:
+                    if polygon and subtype in classes:
                         xmin, ymin, xmax, ymax = polygon.bounds
                         data.append({
                             'image_path':dataset_root / "images" / f"{image_id}_post_disaster.tif",
