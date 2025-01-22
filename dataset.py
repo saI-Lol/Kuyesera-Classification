@@ -15,6 +15,7 @@ import torch.optim as optim
 from torch.amp import autocast, GradScaler
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score
+np.random.seed(0)
 
 class DatasetPost(Dataset):
     def __init__(self, dataset_root_paths, classes, combine_minor_major, transform=None, imgsz=128):
