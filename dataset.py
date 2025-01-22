@@ -54,7 +54,10 @@ class DatasetPost(Dataset):
         self.damage_type_to_id = {class_:idx for idx, class_ in enumerate(classes)}
         self.transform = transform
         self.imgsz = imgsz
-        print(self.damage_type_to_id, Counter(data))
+        damage_types_counts = {class_:0 for class_ in classes}
+        for item in self.data:
+            damage_types_counts[item['damage_type']] += 1
+        print(self.damage_type_to_id, damage_types_counts)
 
     def __len__(self):
         return len(self.data)
