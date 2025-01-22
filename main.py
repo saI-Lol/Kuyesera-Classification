@@ -8,6 +8,7 @@ from pathlib import Path
 import json
 import argparse
 import numpy as np
+import pandas as pd
 from shapely import wkt, box
 from PIL import Image
 from collections import Counter
@@ -115,21 +116,79 @@ def main(rank, world_size, args):
 #     predict(model, loc_dir, original_file_dir, architecture, transform, imgsz)
 #     destroy_process_group()
 
+def create_submission(rank, world_size, args):
+    ddp_setup(rank, world_size)
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    main_model_checkpoint_path = args.main_model_checkpoint_path
+    sub_model_checkpoint_path = args.sub_model_checkpoint_path
+    architecture = args.architecture
+    loc_df = pd.read_csv(args.loc_file_path)
+    original_file_dir = args.original_file_dir
+    batch_size = args.batch_size
+    workers= args.workers
+    imgsz = args.imgsz
+
+    main_checkpoint = torch.load(main_model_checkpoint_path, weights_only=True, map_location="cpu")
+    sub_checkpoint = torch.load(sub_model_checkpoint_path, weights_only=True, map_location="cpu")
+    items = [f"architecture: {architecture}"] + [f'{k}: {v}' for k,v in checkpoint.items() if k != "model_state_dict"]
+    print(' '.join(items))
+
+    if architecture == "PO":
+        model_main = DamageClassifierPO().cuda()
+        model_sub = DamageClassifierPO().cuda()
+    elif architecture == "CC":
+        model_main = DamageClassifierCC().cuda()
+        model_sub = DamageClassifierCC().cuda()
+    elif architecture == "TTC":
+        model_main = DamageClassifierTTC().cuda()
+        model_sub = DamageClassifierTTC().cuda()
+    elif architecture == "TTS":
+        model_main = DamageClassifierTTS().cuda()
+        model_sub = DamageClassifierTTS().cuda()
+    model_main = model_main.to(rank)
+    model_main = DDP(model_main, device_ids=[rank])
+    model_sub = model_sub.to(rank)
+    model_sub = DDP(model_sub, device_ids=[rank])
+
+
+    loaded_dict_main = main_checkpoint['model_state_dict']
+    loaded_dict_sub = sub_checkpoint['model_state_dict']
+    sd_main = model_main.state_dict()
+    sd_sub = model_sub.state_dict()
+    for k in model_main.state_dict():
+        if k in loaded_dict_main and sd_main[k].size() == loaded_dict_main[k].size():
+            sd_main[k] = loaded_dict_main[k]
+    loaded_dict_main = sd_main
+    model_main.load_state_dict(loaded_dict_main)
+
+    for k in model_sub.state_dict():
+        if k in loaded_dict_sub and sd_sub[k].size() == loaded_dict_sub[k].size():
+            sd_sub[k] = loaded_dict_sub[k]
+    loaded_dict_sub = sd_sub
+    model_sub.load_state_dict(loaded_dict_sub)
+    predict(model_main, model_sub, loc_df, original_file_dir, architecture, transform, imgsz)
+    destroy_process_group()
+
 if __name__ == "__main__":    
-    parser = argparse.ArgumentParser(description="Train a model for damage classification")
-    parser.add_argument("--train_dataset_root_paths", type=str, nargs='+', required=True)
-    parser.add_argument("--val_dataset_root_paths", type=str, nargs='+', required=True)
-    parser.add_argument("--test_dataset_root_paths", type=str, nargs='+', required=True)
-    parser.add_argument("--architecture", type=str, required=True)
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--imgsz", type=int, default=128)
-    parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--classes", type=str, nargs='+', default=['no_damage', 'minor_damage', 'major_damage', 'destroyed'])
-    parser.add_argument("--combine_minor_major", action="store_true", help="Combine minor and major categories (default: False)")
-    args = parser.parse_args()
-    world_size = torch.cuda.device_count()
-    mp.spawn(main, args=(world_size, args), nprocs=world_size)
+    # parser = argparse.ArgumentParser(description="Train a model for damage classification")
+    # parser.add_argument("--train_dataset_root_paths", type=str, nargs='+', required=True)
+    # parser.add_argument("--val_dataset_root_paths", type=str, nargs='+', required=True)
+    # parser.add_argument("--test_dataset_root_paths", type=str, nargs='+', required=True)
+    # parser.add_argument("--architecture", type=str, required=True)
+    # parser.add_argument("--batch_size", type=int, default=128)
+    # parser.add_argument("--imgsz", type=int, default=128)
+    # parser.add_argument("--workers", type=int, default=4)
+    # parser.add_argument("--epochs", type=int, default=10)
+    # parser.add_argument("--classes", type=str, nargs='+', default=['no_damage', 'minor_damage', 'major_damage', 'destroyed'])
+    # parser.add_argument("--combine_minor_major", action="store_true", help="Combine minor and major categories (default: False)")
+    # args = parser.parse_args()
+    # world_size = torch.cuda.device_count()
+    # mp.spawn(main, args=(world_size, args), nprocs=world_size)
+
     # parser = argparse.ArgumentParser()
     # parser.add_argument("--checkpoint_path", type=str, required=True)
     # parser.add_argument("--architecture", type=str, required=True)
@@ -142,3 +201,16 @@ if __name__ == "__main__":
     # # experiment(args)
     # world_size = torch.cuda.device_count()
     # mp.spawn(experiment, args=(world_size, args), nprocs=world_size)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--main_model_checkpoint_path", type=str, required=True)
+    parser.add_argument("--sub_model_checkpoint_path", type=str, required=True)
+    parser.add_argument("--architecture", type=str, required=True)
+    parser.add_argument("--loc_file_path", type=str, required=True)
+    parser.add_argument("--original_file_dir", type=str, required=True)
+    parser.add_argument("--batch_size", type=int, default=128)
+    parser.add_argument("--imgsz", type=int, default=128)
+    parser.add_argument("--workers", type=int, default=4)
+    args = parser.parse_args()
+    world_size = torch.cuda.device_count()
+    mp.spawn(create_submission, args=(world_size, args), nprocs=world_size)

@@ -143,46 +143,33 @@ def read_raster(file_path):
         img_arr = f.read()
     return img_arr
 
-def predict(model, loc_dir, original_file_dir, architecture, transform, imgsz):
-    thresholds = [25, 50, 75, 100]
-    classes = ['no_damage', 'minor_damage', 'major_damage', 'destroyed']
-    loc_dir = Path(loc_dir)
+def predict(model_main, model_sub, loc_df, original_file_dir, architecture, transform, imgsz):
+    classes_main = ['no_damage', 'destroyed', 'minor_major_damage']
+    classes_sub = ['minor_damage', 'major_damage']
     original_file_dir = Path(original_file_dir)
-    loc_files = sorted([filename for filename in os.listdir(loc_dir) if "part1" in filename])
+    thresholds = [0.01, 0.05, 0.1, 0.25, 0.5]
     
     for threshold in thresholds:
         results = []
-        for filename in tqdm(loc_files, desc=f"Threshold {threshold}"):
-            polygons = []
+        for pre_disaster_filename in tqdm(loc_df['Image_ID'].unique(), desc=f"Threshold: {threshold}"):
             damage_dict = {
                 'no_damage': 0,
+                'destroyed': 0,
                 'minor_damage': 0,
-                'major_damage': 0,
-                'destroyed': 0
+                'major_damage': 0
             }
-            image_id = '_'.join(filename.split('_')[:-3])
-            original_file_path_pre = original_file_dir / filename.replace("_part1.png", ".tif")
-            original_file_path_post = original_file_dir / filename.replace("_part1.png", ".tif").replace("pre", "post")
-            loc_file_path = loc_dir / filename
-            img = Image.open(loc_file_path)
-            img = np.array(img.convert("L"))
-            binary_mask = (img >= threshold).astype('uint8')
-            shapes = rasterio.features.shapes(binary_mask)
-            for shape in shapes:
-                if shape[1] == 1:
-                    image_box = box(0, 0, 1024, 1024)
-                    polygon = shapely.geometry.Polygon(shape[0]["coordinates"][0])
-                    if not polygon.intersection(image_box).is_empty:
-                        polygons.append(polygon)
-            pre_image = read_raster(original_file_path_pre)
-            post_image = read_raster(original_file_path_post)
+            image_id = '_'.join(pre_disaster_filename.split('_')[:-2])
+            pre_disaster_file_path = original_file_dir / pre_disaster_filename
+            post_disaster_file_path = original_file_dir / pre_disaster_filename.replace("pre", "post")
+            pre_image = np.array(Image.open(pre_disaster_file_path))
+            post_image = np.array(Image.open(post_disaster_file_path))
 
-            for polygon in polygons:
-                xmin, ymin, xmax, ymax = list(map(int, polygon.bounds))
-                pre_img_patch = pre_image[:, ymin:ymax, xmin:xmax]
-                post_img_patch = post_image[:, ymin:ymax, xmin:xmax]
-                pre_img_patch = np.transpose(pre_img_patch, (1, 2, 0)).astype(np.uint8)
-                post_img_patch = np.transpose(post_img_patch, (1, 2, 0)).astype(np.uint8)
+            df_temp = loc_df[loc_df['Image_ID'] == pre_disaster_filename]
+            df_temp = df_temp[df_temp['confidence'] >= threshold]
+            for _, row in df_temp.iterrows():
+                xmin, ymin, xmax, ymax = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
+                pre_img_patch = pre_image[ymin:ymax, xmin:xmax, :]
+                post_img_patch = post_image[ymin:ymax, xmin:xmax, :]
                 pre_img_patch = Image.fromarray(pre_img_patch)
                 post_img_patch = Image.fromarray(post_img_patch)
                 pre_img_patch = pre_img_patch.resize((imgsz, imgsz), resample=Image.Resampling.LANCZOS)
@@ -190,14 +177,21 @@ def predict(model, loc_dir, original_file_dir, architecture, transform, imgsz):
                 pre_img_patch = transform(pre_img_patch)
                 post_img_patch = transform(post_img_patch)
                 pre_img_tensor = pre_img_patch.unsqueeze(0).cuda()
-                post_img_tensor = post_img_patch.unsqueeze(0).cuda()
-
+                post_img_tensor = post_img_patch.unsqueeze(0).cuda()            
+                    
                 if architecture == "PO":
-                    output = model(pre_img_tensor)
+                    output = model_main(pre_img_tensor)
                 else:
-                    output = model(pre_img_tensor, post_img_tensor)
+                    output = model_main(pre_img_tensor, post_img_tensor)
                 pred = torch.argmax(torch.softmax(output, 1), dim=1).item()
-                damage_type = classes[pred]
+                damage_type = classes_main[pred]
+                if damage_type == "minor_major_damage":
+                    if architecture == "PO":
+                        output = model_sub(pre_img_tensor)
+                    else:
+                        output = model_sub(pre_img_tensor, post_img_tensor)
+                    pred = torch.argmax(torch.softmax(output, 1), dim=1).item()
+                    damage_type = classes_sub[pred]
                 damage_dict[damage_type] += 1
             for damage_type, count in damage_dict.items():
                 results.append({
@@ -205,7 +199,8 @@ def predict(model, loc_dir, original_file_dir, architecture, transform, imgsz):
                     'target': count
                 })
         df_sub = pd.DataFrame(results)
-        df_sub.to_csv(f"submission_threshold_{threshold}_architecture_{architecture}.csv", index=False)
+        submission_id = f"submission_{threshold}_threshold_{architecture}"
+        df_sub.to_csv(f"{submission_id}.csv", index=False)
 
 
 
